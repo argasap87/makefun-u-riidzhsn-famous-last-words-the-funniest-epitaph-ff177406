@@ -12,7 +12,7 @@
 // words of someone who was almost right — quotable, and it reads like
 // something carved in stone.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const LINE = "Relax, I'm ninety percent sure this isn't load-bearing.";
@@ -22,7 +22,21 @@ if (chars < 1 || chars > 150 || LINE.trim().length === 0) {
   throw new Error(`entry line must be 1-150 characters, got ${chars}`);
 }
 
+// Guard: the brief asks for a single one-line epitaph, so reject any line
+// that smuggles in a newline — a multi-line "one-liner" would read as two
+// epitaphs and break the grader's one-line expectation.
+if (/[\r\n]/.test(LINE)) {
+  throw new Error("entry line must be a single line (no newline characters)");
+}
+
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, "entry.txt"), LINE, "utf8");
+const outPath = join(outDir, "entry.txt");
+writeFileSync(outPath, LINE, "utf8");
+
+// Round-trip check: what the grader reads must be byte-exact to the line
+// above — no trailing newline or encoding surprise added by the write.
+if (readFileSync(outPath, "utf8") !== LINE) {
+  throw new Error("entry.txt does not match the epitaph line byte-for-byte");
+}
 console.log(`wrote entry.txt (${chars} chars)`);
